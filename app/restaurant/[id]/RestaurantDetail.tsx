@@ -174,7 +174,12 @@ export default function RestaurantDetail({ restaurant: r, dishes, reviews }: Pro
           )}
 
           {r.meituan_url && (
-            <a className="meituan-btn" href={r.meituan_url} target="_blank" rel="noopener">
+            <a
+              className="meituan-btn"
+              href={r.meituan_url.replace('www.meituan.com/search', 'i.meituan.com/search')}
+              target="_blank"
+              rel="noopener"
+            >
               去美团领优惠券 / 团购 →
             </a>
           )}

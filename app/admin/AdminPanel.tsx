@@ -217,7 +217,7 @@ export default function AdminPanel({ initialRestaurants }: { initialRestaurants:
         avg_price: parseInt(avgPrice) || 0,
         rating: parseFloat(rating) || 5.0,
         description: description.trim() || null,
-        meituan_url: meituanUrl.trim() || `https://www.meituan.com/search/?keyword=${encodeURIComponent(name.trim())}`,
+        meituan_url: meituanUrl.trim() || `https://i.meituan.com/search/?keyword=${encodeURIComponent(name.trim())}`,
         is_active: true,
       })
       .select()
