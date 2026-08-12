@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>长春清真餐厅地图 · 吉大周边</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; background: #f5f5f5; color: #1a1a1a; line-height: 1.5; }
+        .app-header { position: fixed; top: 0; left: 0; right: 0; height: 52px; background: #0F6E56; display: flex; align-items: center; justify-content: center; z-index: 100; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+        .app-header h1 { color: #fff; font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }
+        .view { position: fixed; top: 52px; bottom: 52px; left: 0; right: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .view.hidden { display: none; }
+        #map-view { overflow: hidden; }
+        #map { width: 100%; height: 100%; position: relative; background: #E8ECF0; }
+        #map-svg { width: 100%; height: 100%; display: block; }
+        .map-overlay { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 10; pointer-events: none; }
+        .map-info-card { background: rgba(255,255,255,0.95); border-radius: 10px; padding: 10px 14px; display: inline-flex; align-items: center; gap: 8px; pointer-events: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .map-info-icon { width: 8px; height: 8px; border-radius: 50%; background: #185FA5; }
+        .map-info-text { font-size: 13px; color: #333; }
+        .map-info-text strong { color: #185FA5; }
+        .map-popup { position: absolute; z-index: 20; background: rgba(255,255,255,0.97); border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 12px 16px; min-width: 200px; max-width: 260px; transform: translate(-50%, -100%); margin-top: -38px; pointer-events: auto; }
+        .map-popup::after { content: ''; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid rgba(255,255,255,0.97); }
+        .popup-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+        .popup-meta { font-size: 12px; color: #666; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; }
+        .popup-addr { font-size: 11px; color: #999; margin-bottom: 8px; }
+        .popup-btn { display: inline-block; padding: 5px 14px; background: #0F6E56; color: #fff; font-size: 12px; border-radius: 6px; text-decoration: none; cursor: pointer; border: none; }
+        .popup-close { position: absolute; top: 6px; right: 8px; color: #ccc; font-size: 16px; cursor: pointer; background: none; border: none; line-height: 1; }
+        .list-container { max-width: 680px; margin: 0 auto; padding: 12px 12px 20px; }
+        .toolbar { background: #fff; border-bottom: 1px solid #f0f0f0; position: sticky; top: 0; z-index: 10; }
+        .search-wrap { padding: 8px 12px; }
+        .search-input { width: 100%; padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; }
+        .search-input:focus { border-color: #0F6E56; }
+        .sort-bar { display: flex; gap: 8px; padding: 4px 12px 8px; }
+        .sort-btn { padding: 5px 14px; border: 1px solid #e0e0e0; border-radius: 16px; background: #fff; color: #666; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+        .sort-btn.active { background: #0F6E56; color: #fff; border-color: #0F6E56; }
+        .restaurant-card { background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; border: 1px solid #f0f0f0; cursor: pointer; transition: transform 0.1s; }
+        .restaurant-card:active { transform: scale(0.98); }
+        .card-row1 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .card-name { font-size: 16px; font-weight: 600; }
+        .card-rating { color: #F5A623; font-size: 14px; font-weight: 600; white-space: nowrap; }
+        .card-row2 { font-size: 13px; color: #888; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+        .card-row3 { font-size: 12px; color: #bbb; margin-top: 4px; }
+        .badge { background: #E1F5EE; color: #0F6E56; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+        .price-tag { color: #0F6E56; font-weight: 500; }
+        .dist-tag { color: #185FA5; }
+        .detail-container { max-width: 680px; margin: 0 auto; padding: 16px; }
+        .detail-back { display: inline-flex; align-items: center; gap: 4px; color: #0F6E56; font-size: 14px; margin-bottom: 16px; cursor: pointer; background: none; border: none; padding: 4px 0; }
+        .detail-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+        .detail-meta { display: flex; gap: 12px; font-size: 14px; color: #666; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+        .detail-info { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid #f0f0f0; }
+        .detail-info-row { display: flex; gap: 8px; font-size: 14px; margin-bottom: 6px; }
+        .detail-info-row:last-child { margin-bottom: 0; }
+        .detail-info-label { color: #888; min-width: 56px; flex-shrink: 0; }
+        .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+        .section-title::before { content: ""; width: 3px; height: 16px; background: #0F6E56; border-radius: 2px; }
+        .dish-card { background: #fff; border-radius: 10px; padding: 14px 16px; margin-bottom: 8px; border: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .dish-left { flex: 1; }
+        .dish-name { font-size: 15px; font-weight: 500; }
+        .dish-desc { font-size: 12px; color: #999; margin-top: 2px; }
+        .dish-price { font-size: 16px; font-weight: 600; color: #0F6E56; white-space: nowrap; margin-left: 12px; }
+        .meituan-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 13px; background: #FFC300; color: #333; text-align: center; border-radius: 10px; font-size: 15px; font-weight: 600; text-decoration: none; margin: 16px 0; border: none; cursor: pointer; }
+        .meituan-btn:active { opacity: 0.85; }
+        .view-on-map-btn { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; padding: 10px; background: #fff; color: #0F6E56; border: 1px solid #0F6E56; border-radius: 8px; font-size: 14px; cursor: pointer; margin-bottom: 16px; }
+        .review-card { background: #fff; border-radius: 10px; padding: 14px 16px; margin-bottom: 8px; border: 1px solid #f0f0f0; }
+        .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .review-user { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+        .review-avatar { width: 28px; height: 28px; border-radius: 50%; background: #E1F5EE; color: #0F6E56; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+        .review-date { font-size: 12px; color: #bbb; }
+        .review-text { font-size: 14px; color: #333; margin-top: 4px; }
+        .review-photo { width: 100%; max-height: 240px; object-fit: cover; border-radius: 8px; margin-top: 8px; }
+        .review-form { background: #fff; border-radius: 12px; padding: 16px; margin-top: 16px; border: 1px solid #f0f0f0; }
+        .form-group { margin-bottom: 14px; }
+        .form-label { font-size: 14px; font-weight: 500; margin-bottom: 6px; display: block; }
+        .form-input, .form-textarea { width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: inherit; outline: none; }
+        .form-input:focus, .form-textarea:focus { border-color: #0F6E56; }
+        .form-textarea { min-height: 80px; resize: vertical; }
+        .rating-input { display: flex; gap: 6px; }
+        .star-btn { font-size: 30px; color: #ddd; cursor: pointer; transition: color 0.1s; user-select: none; }
+        .star-btn.active { color: #F5A623; }
+        .photo-upload { display: flex; align-items: center; gap: 8px; }
+        .photo-upload-label { display: inline-flex; align-items: center; gap: 4px; padding: 8px 14px; border: 1px dashed #0F6E56; border-radius: 8px; color: #0F6E56; font-size: 13px; cursor: pointer; }
+        .photo-upload-label:active { background: #E1F5EE; }
+        .photo-preview { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; }
+        .submit-btn { width: 100%; padding: 12px; background: #0F6E56; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+        .submit-btn:active { background: #085041; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 52px; background: #fff; border-top: 1px solid #f0f0f0; display: flex; z-index: 100; }
+        .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: none; background: none; color: #999; font-size: 11px; cursor: pointer; }
+        .nav-btn.active { color: #0F6E56; }
+        .nav-btn svg { width: 22px; height: 22px; }
+        .toast { position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.82); color: #fff; padding: 10px 24px; border-radius: 8px; font-size: 14px; z-index: 10000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .toast.show { opacity: 1; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #999; font-size: 14px; }
+        .review-count { font-size: 13px; color: #888; font-weight: 400; }
+        .map-legend { position: absolute; bottom: 12px; left: 12px; z-index: 10; background: rgba(255,255,255,0.92); border-radius: 8px; padding: 8px 12px; font-size: 12px; color: #666; display: flex; gap: 16px; align-items: center; }
+        .legend-item { display: flex; align-items: center; gap: 4px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <h1>长春清真餐厅 · 吉大周边</h1>
+    </header>
+
+    <div id="map-view" class="view">
+        <div id="map">
+            <svg id="map-svg" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice"></svg>
+            <div class="map-overlay">
+                <div class="map-info-card">
+                    <div class="map-info-icon"></div>
+                    <div class="map-info-text">中心：<strong>吉林大学(前卫南区)</strong></div>
+                </div>
+            </div>
+            <div id="map-popup-container"></div>
+            <div class="map-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#185FA5;"></div>学校</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#0F6E56;"></div>清真餐厅</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="list-view" class="view hidden">
+        <div class="toolbar">
+            <div class="search-wrap">
+                <input type="text" class="search-input" id="search-input" placeholder="搜索餐厅名称或菜系...">
+            </div>
+            <div class="sort-bar">
+                <button class="sort-btn active" data-sort="distance">距离最近</button>
+                <button class="sort-btn" data-sort="rating">评分最高</button>
+                <button class="sort-btn" data-sort="price">人均最低</button>
+            </div>
+        </div>
+        <div class="list-container">
+            <div id="restaurant-list"></div>
+        </div>
+    </div>
+
+    <div id="detail-view" class="view hidden">
+        <div class="detail-container" id="restaurant-detail"></div>
+    </div>
+
+    <nav class="bottom-nav">
+        <button class="nav-btn active" data-view="map" onclick="switchView('map')">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>
+            <span>地图</span>
+        </button>
+        <button class="nav-btn" data-view="list" onclick="switchView('list')">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h18v2H3V5zm0 4h18v2H3V9zm0 4h18v2H3v-2zm0 4h18v2H3v-2z"/></svg>
+            <span>列表</span>
+        </button>
+    </nav>
+
+    <script>
+    const SCHOOL = { name: "吉林大学(前卫南区)", lat: 43.8261, lng: 125.2948 };
+
+    /* ==================== 餐厅数据（14家） ====================
+       #1-6: 用户实拍照片识别（地址待补，坐标为占位散开分布）
+       #7-14: 初始预设数据（待验证真实性后调整）
+    */
+    const RESTAURANTS = [
+        /* --- 以下 6 家来自用户实拍照片 --- */
+        {
+            id: 1, name: "南来顺清真饭店", lat: 43.8270, lng: 125.2960,
+            address: "朝阳区牡丹街646号(鸿宾胡同)", phone: null,
+            rating: 4.5, avgPrice: 25, category: "清真早餐",
+            dishes: [
+                { name: "清真早餐套餐", price: 18, desc: "油条、豆沙、豆脑脑、烧麦等" },
+                { name: "烧麦", price: 16, desc: "传统清真做法，皮薄馅大" },
+                { name: "羊杂汤", price: 22, desc: "汤鲜料足，暖身暖胃" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=南来顺清真饭店",
+            reviews: []
+        },
+        {
+            id: 2, name: "鸿记菜馆", lat: 43.8255, lng: 125.2935,
+            address: "地址待补", phone: null,
+            rating: 4.3, avgPrice: 50, category: "清真家常菜",
+            dishes: [
+                { name: "鸿记招牌菜", price: 48, desc: "店内招牌，请到店询问" },
+                { name: "清真家常套餐", price: 88, desc: "含主菜+配菜+主食，适合2-3人" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=鸿记菜馆长春",
+            reviews: []
+        },
+        {
+            id: 3, name: "叼啃dei手撕鸡架", lat: 43.8275, lng: 125.2920,
+            address: "地址待补(旗靓店001)", phone: null,
+            rating: 4.4, avgPrice: 30, category: "清真小吃",
+            dishes: [
+                { name: "手撕鸡架", price: 28, desc: "招牌手撕鸡架，越啃越香" },
+                { name: "烤鸡架", price: 25, desc: "炭火烤制，外焦里嫩" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=叼啃dei手撕鸡架",
+            reviews: []
+        },
+        {
+            id: 4, name: "羊羯子火锅", lat: 43.8245, lng: 125.2975,
+            address: "地址待补", phone: null,
+            rating: 4.5, avgPrice: 80, category: "清真火锅",
+            dishes: [
+                { name: "羊羯子锅底", price: 88, desc: "骨髓丰满，汤底醇厚" },
+                { name: "6人套餐(含牛排)", price: 288, desc: "适合多人聚餐，含羊羯子+配菜+牛排" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=羊羯子火锅长春",
+            reviews: []
+        },
+        {
+            id: 5, name: "杨家巧面馆", lat: 43.8230, lng: 125.2955,
+            address: "地址待补", phone: "17177400899",
+            rating: 4.2, avgPrice: 20, category: "清真面食",
+            dishes: [
+                { name: "6元小炒", price: 6, desc: "高性价比招牌小炒" },
+                { name: "清真牛肉面", price: 18, desc: "汤清面筋，牛肉酥烂" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=杨家巧面馆",
+            reviews: []
+        },
+        {
+            id: 6, name: "葛记回族烧饼铺", lat: 43.8265, lng: 125.2900,
+            address: "地址待补", phone: null,
+            rating: 4.4, avgPrice: 10, category: "清真小吃",
+            dishes: [
+                { name: "回族烧饼", price: 5, desc: "传统回族做法，外酥里香" },
+                { name: "芝麻烧饼", price: 6, desc: "芝麻香浓，配汤一绝" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=葛记回族烧饼铺",
+            reviews: []
+        },
+        /* --- 以下 8 家为初始预设数据 --- */
+        {
+            id: 7, name: "老西北清真餐厅", lat: 43.8285, lng: 125.2985,
+            address: "朝阳区前进大街2688号", phone: "0431-85112345",
+            rating: 4.5, avgPrice: 45, category: "西北菜",
+            dishes: [
+                { name: "孜然羊肉", price: 38, desc: "精选羊腿肉，孜然香浓，外焦里嫩" },
+                { name: "大盘鸡", price: 58, desc: "鸡肉鲜嫩，土豆软糯，汤汁浓郁" },
+                { name: "烤羊排", price: 88, desc: "炭火慢烤，外焦里嫩，肉质鲜美" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=老西北清真餐厅",
+            reviews: [
+                { user: "吉大小王", rating: 5, text: "味道很正宗，孜然羊肉必点！", date: "2024-09-15", photo: null },
+                { user: "吃货小李", rating: 4, text: "分量足，价格实惠，就是高峰期要排队", date: "2024-09-10", photo: null }
+            ]
+        },
+        {
+            id: 8, name: "兰州牛肉面(吉大店)", lat: 43.8240, lng: 125.2915,
+            address: "朝阳区解放大路123号", phone: "0431-85667890",
+            rating: 4.2, avgPrice: 22, category: "面食",
+            dishes: [
+                { name: "牛肉拉面", price: 16, desc: "一清二白三红四绿五黄" },
+                { name: "牛肉拌面", price: 20, desc: "酱香浓郁，面条筋道" },
+                { name: "酿皮子", price: 12, desc: "酸辣爽口，开胃小食" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=兰州牛肉面吉大店",
+            reviews: [
+                { user: "考研加油", rating: 4, text: "便宜量大，考研党的食堂", date: "2024-09-12", photo: null },
+                { user: "路过的吃货", rating: 5, text: "汤头很鲜，面条筋道！", date: "2024-09-08", photo: null }
+            ]
+        },
+        {
+            id: 9, name: "西北清真大盘鸡", lat: 43.8305, lng: 125.3005,
+            address: "朝阳区前进大街与靖宇路交汇", phone: "0431-85990011",
+            rating: 4.3, avgPrice: 55, category: "西北菜",
+            dishes: [
+                { name: "大盘鸡(中份)", price: 68, desc: "鸡肉入味，土豆绵软，加皮带面" },
+                { name: "羊肉泡馍", price: 35, desc: "汤浓馍香，暖胃首选" },
+                { name: "凉皮", price: 10, desc: "酸辣爽滑，解腻神器" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=西北清真大盘鸡长春",
+            reviews: [
+                { user: "宿舍聚餐队长", rating: 5, text: "四个人吃一个中份大盘鸡刚好，加皮带面绝了", date: "2024-09-14", photo: null }
+            ]
+        },
+        {
+            id: 10, name: "清真烤肉坊", lat: 43.8220, lng: 125.2970,
+            address: "朝阳区桂林路胡同15号", phone: "0431-85223456",
+            rating: 4.6, avgPrice: 50, category: "烤肉",
+            dishes: [
+                { name: "烤羊腿", price: 128, desc: "整只烤制，外酥里嫩" },
+                { name: "烤包子", price: 8, desc: "皮脆馅多，羊肉鲜香" },
+                { name: "羊肉串(10串)", price: 30, desc: "炭火现烤，孜然味浓" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=清真烤肉坊长春",
+            reviews: [
+                { user: "深夜放毒", rating: 5, text: "晚上来撸串太爽了，烤羊腿必点！", date: "2024-09-16", photo: null },
+                { user: "东北大妞", rating: 4, text: "烤包子好吃，就是有点远", date: "2024-09-05", photo: null }
+            ]
+        },
+        {
+            id: 11, name: "宁夏手抓羊肉馆", lat: 43.8280, lng: 125.3045,
+            address: "南关区亚泰大街4099号", phone: "0431-88776655",
+            rating: 4.4, avgPrice: 60, category: "西北菜",
+            dishes: [
+                { name: "手抓羊肉", price: 78, desc: "原汁原味，蘸蒜泥绝配" },
+                { name: "羊杂汤", price: 25, desc: "汤鲜料足，暖身暖胃" },
+                { name: "蒸羊排", price: 88, desc: "肉质酥烂，香气四溢" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=宁夏手抓羊肉馆长春",
+            reviews: [
+                { user: "羊肉爱好者", rating: 5, text: "手抓羊肉太正宗了，跟在宁夏吃的一模一样", date: "2024-09-13", photo: null }
+            ]
+        },
+        {
+            id: 12, name: "新疆风味餐厅", lat: 43.8200, lng: 125.2995,
+            address: "朝阳区西民主大街9号", phone: "0431-85443322",
+            rating: 4.1, avgPrice: 38, category: "新疆菜",
+            dishes: [
+                { name: "新疆炒米粉", price: 22, desc: "辣中带甜，米粉Q弹" },
+                { name: "馕包肉", price: 45, desc: "馕饼吸汁，羊肉软烂" },
+                { name: "过油肉拌面", price: 25, desc: "肉片滑嫩，面条筋道" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=新疆风味餐厅长春",
+            reviews: [
+                { user: "米粉控", rating: 4, text: "炒米粉味道不错，就是有点辣", date: "2024-09-11", photo: null },
+                { user: "新疆老乡", rating: 5, text: "终于找到正宗的新疆菜了！", date: "2024-09-07", photo: null }
+            ]
+        },
+        {
+            id: 13, name: "马家清真拉面", lat: 43.8315, lng: 125.2930,
+            address: "朝阳区隆礼路与百汇街交汇", phone: "0431-85119988",
+            rating: 4.0, avgPrice: 20, category: "面食",
+            dishes: [
+                { name: "牛肉拉面", price: 14, desc: "汤清面筋，牛肉酥烂" },
+                { name: "炒面片", price: 18, desc: "片片分明，酱香入味" },
+                { name: "酸辣土豆丝", price: 10, desc: "酸辣爽脆，下饭神器" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=马家清真拉面长春",
+            reviews: [
+                { user: "赶课人", rating: 4, text: "便宜实惠，上课前嗦一碗刚好", date: "2024-09-09", photo: null }
+            ]
+        },
+        {
+            id: 14, name: "清真绿洲餐厅", lat: 43.8255, lng: 125.2885,
+            address: "朝阳区致远街55号", phone: "0431-85338877",
+            rating: 4.3, avgPrice: 48, category: "清真菜",
+            dishes: [
+                { name: "羊蝎子火锅", price: 98, desc: "骨髓丰满，汤底醇厚" },
+                { name: "烤全羊(需预订)", price: 588, desc: "整只烤制，外酥里嫩" },
+                { name: "羊肉烩面", price: 22, desc: "汤浓面滑，羊肉鲜嫩" }
+            ],
+            meituanUrl: "https://www.meituan.com/search/?keyword=清真绿洲餐厅长春",
+            reviews: [
+                { user: "冬天吃火锅", rating: 5, text: "冬天来一锅羊蝎子，太舒服了", date: "2024-09-14", photo: null },
+                { user: "聚餐达人", rating: 4, text: "烤全羊要提前一天预订，味道很好", date: "2024-09-06", photo: null }
+            ]
+        }
+    ];
+
+    let currentView = 'map';
+    let previousView = 'map';
+    let currentRestaurantId = null;
+    let currentSort = 'distance';
+    let mapInitialized = false;
+    let selectedRating = 5;
+    let uploadedPhoto = null;
+
+    function calculateDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function getDistance(restaurant) {
+        return calculateDistance(SCHOOL.lat, SCHOOL.lng, restaurant.lat, restaurant.lng);
+    }
+
+    function formatDistance(km) {
+        if (km < 1) return Math.round(km * 1000) + 'm';
+        return km.toFixed(1) + 'km';
+    }
+
+    function renderStars(rating) {
+        const full = Math.floor(rating);
+        const half = rating - full >= 0.5;
+        let html = '';
+        for (let i = 0; i < full; i++) html += '<span style="color:#F5A623;">\u2605</span>';
+        if (half) html += '<span style="color:#F5A623;">\u2605</span>';
+        for (let i = full + (half ? 1 : 0); i < 5; i++) html += '<span style="color:#ddd;">\u2605</span>';
+        return html;
+    }
+
+    function getRestaurantById(id) {
+        return RESTAURANTS.find(r => r.id === id);
+    }
+
+    function getReviews(restaurantId) {
+        const key = 'halal_reviews_' + restaurantId;
+        const stored = localStorage.getItem(key);
+        if (stored) {
+            try { return JSON.parse(stored); } catch(e) {}
+        }
+        const restaurant = getRestaurantById(restaurantId);
+        const initial = restaurant ? (restaurant.reviews || []) : [];
+        try { localStorage.setItem(key, JSON.stringify(initial)); } catch(e) {}
+        return initial;
+    }
+
+    function saveReview(restaurantId, review) {
+        const reviews = getReviews(restaurantId);
+        reviews.unshift(review);
+        try { localStorage.setItem('halal_reviews_' + restaurantId, JSON.stringify(reviews)); } catch(e) {
+            review.photo = null;
+            reviews[0] = review;
+            try { localStorage.setItem('halal_reviews_' + restaurantId, JSON.stringify(reviews)); } catch(e2) {}
+        }
+    }
+
+    function resizeImage(file, maxWidth, callback) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const scale = Math.min(1, maxWidth / img.width);
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                callback(canvas.toDataURL('image/jpeg', 0.7));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function showToast(message) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 2000);
+    }
+
+    /* ==================== SVG 地图实现 ==================== */
+
+    function latLngToXY(lat, lng) {
+        var cx = 400, cy = 300;
+        var scale = 12000;
+        var x = cx + (lng - SCHOOL.lng) * scale;
+        var y = cy - (lat - SCHOOL.lat) * scale;
+        return { x: x, y: y };
+    }
+
+    function buildPopupHTML(r) {
+        var dist = formatDistance(getDistance(r));
+        return '<div class="map-popup" id="map-popup">' +
+            '<button class="popup-close" onclick="closeMapPopup()">&times;</button>' +
+            '<div class="popup-name">' + r.name + '</div>' +
+            '<div class="popup-meta">' +
+                '<span style="color:#F5A623;">\u2605 ' + r.rating + '</span>' +
+                '<span style="color:#ddd;">|</span>' +
+                '<span>\u00a5' + r.avgPrice + '/人</span>' +
+                '<span style="color:#ddd;">|</span>' +
+                '<span>' + dist + '</span>' +
+            '</div>' +
+            '<div class="popup-addr">' + r.address + '</div>' +
+            '<button class="popup-btn" onclick="showDetail(' + r.id + ',\'map\')">查看详情</button>' +
+        '</div>';
+    }
+
+    function showMapPopupAtScreen(sx, sy, innerHTML) {
+        closeMapPopup();
+        var container = document.getElementById('map-popup-container');
+        container.innerHTML = '<div class="map-popup" id="map-popup" style="left:' + sx + 'px;top:' + sy + 'px;">' + innerHTML + '</div>';
+    }
+
+    function closeMapPopup() {
+        var container = document.getElementById('map-popup-container');
+        if (container) container.innerHTML = '';
+    }
+
+    function initMap() {
+        if (mapInitialized) return;
+        mapInitialized = true;
+
+        var svg = document.getElementById('map-svg');
+        var ns = 'http://www.w3.org/2000/svg';
+
+        // defs: 网格图案 + 光晕渐变
+        var defs = document.createElementNS(ns, 'defs');
+        defs.innerHTML =
+            '<pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">' +
+                '<rect width="50" height="50" fill="#E8ECF0"/>' +
+                '<path d="M50 0L0 0 0 50" fill="none" stroke="#D5DBE2" stroke-width="0.5"/>' +
+            '</pattern>' +
+            '<radialGradient id="schoolGlow" cx="50%" cy="50%" r="50%">' +
+                '<stop offset="0%" stop-color="#185FA5" stop-opacity="0.15"/>' +
+                '<stop offset="100%" stop-color="#185FA5" stop-opacity="0"/>' +
+            '</radialGradient>';
+        svg.appendChild(defs);
+
+        // 背景
+        var bg = document.createElementNS(ns, 'rect');
+        bg.setAttribute('width', '800');
+        bg.setAttribute('height', '600');
+        bg.setAttribute('fill', 'url(#grid)');
+        svg.appendChild(bg);
+
+        // 道路
+        var roads = [
+            { d: 'M0,310 Q200,300 400,290 T800,280', w: 10, c: '#F0F2F5' },
+            { d: 'M0,350 Q200,360 400,370 T800,380', w: 6, c: '#F0F2F5' },
+            { d: 'M380,0 Q390,150 400,300 T420,600', w: 8, c: '#F0F2F5' },
+            { d: 'M200,0 Q210,200 220,400 T240,600', w: 6, c: '#F0F2F5' },
+            { d: 'M600,0 Q590,200 580,400 T560,600', w: 6, c: '#F0F2F5' },
+            { d: 'M0,150 Q300,140 500,150 T800,160', w: 4, c: '#EDF0F3' },
+            { d: 'M0,480 Q300,470 500,480 T800,490', w: 4, c: '#EDF0F3' }
+        ];
+        roads.forEach(function(r) {
+            var path = document.createElementNS(ns, 'path');
+            path.setAttribute('d', r.d);
+            path.setAttribute('stroke', r.c);
+            path.setAttribute('stroke-width', r.w);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(path);
+        });
+
+        // 街区色块
+        var blocks = [
+            { x: 50, y: 50, w: 130, h: 80 }, { x: 50, y: 180, w: 130, h: 100 },
+            { x: 50, y: 400, w: 130, h: 80 }, { x: 50, y: 510, w: 130, h: 70 },
+            { x: 250, y: 50, w: 110, h: 70 }, { x: 250, y: 180, w: 110, h: 90 },
+            { x: 250, y: 400, w: 110, h: 60 }, { x: 250, y: 500, w: 110, h: 70 },
+            { x: 430, y: 50, w: 120, h: 70 }, { x: 430, y: 170, w: 120, h: 80 },
+            { x: 430, y: 400, w: 120, h: 60 }, { x: 430, y: 490, w: 120, h: 80 },
+            { x: 620, y: 50, w: 130, h: 80 }, { x: 620, y: 180, w: 130, h: 100 },
+            { x: 620, y: 400, w: 130, h: 70 }, { x: 620, y: 500, w: 130, h: 70 }
+        ];
+        blocks.forEach(function(b) {
+            var rect = document.createElementNS(ns, 'rect');
+            rect.setAttribute('x', b.x); rect.setAttribute('y', b.y);
+            rect.setAttribute('width', b.w); rect.setAttribute('height', b.h);
+            rect.setAttribute('rx', '4');
+            rect.setAttribute('fill', '#DDE3EA');
+            rect.setAttribute('opacity', '0.5');
+            svg.appendChild(rect);
+        });
+
+        // 学校位置
+        var schoolPos = latLngToXY(SCHOOL.lat, SCHOOL.lng);
+
+        // 光晕
+        var glow = document.createElementNS(ns, 'circle');
+        glow.setAttribute('cx', schoolPos.x);
+        glow.setAttribute('cy', schoolPos.y);
+        glow.setAttribute('r', '80');
+        glow.setAttribute('fill', 'url(#schoolGlow)');
+        svg.appendChild(glow);
+
+        // 同心圆
+        var ring1 = document.createElementNS(ns, 'circle');
+        ring1.setAttribute('cx', schoolPos.x);
+        ring1.setAttribute('cy', schoolPos.y);
+        ring1.setAttribute('r', '28');
+        ring1.setAttribute('fill', 'none');
+        ring1.setAttribute('stroke', '#185FA5');
+        ring1.setAttribute('stroke-width', '2');
+        ring1.setAttribute('opacity', '0.3');
+        svg.appendChild(ring1);
+
+        var ring2 = document.createElementNS(ns, 'circle');
+        ring2.setAttribute('cx', schoolPos.x);
+        ring2.setAttribute('cy', schoolPos.y);
+        ring2.setAttribute('r', '50');
+        ring2.setAttribute('fill', 'none');
+        ring2.setAttribute('stroke', '#185FA5');
+        ring2.setAttribute('stroke-width', '1.5');
+        ring2.setAttribute('opacity', '0.15');
+        svg.appendChild(ring2);
+
+        // 学校名称
+        var schoolLabel = document.createElementNS(ns, 'text');
+        schoolLabel.setAttribute('x', schoolPos.x);
+        schoolLabel.setAttribute('y', schoolPos.y - 38);
+        schoolLabel.setAttribute('text-anchor', 'middle');
+        schoolLabel.setAttribute('font-size', '12');
+        schoolLabel.setAttribute('font-weight', '600');
+        schoolLabel.setAttribute('fill', '#185FA5');
+        schoolLabel.textContent = SCHOOL.name;
+        svg.appendChild(schoolLabel);
+
+        // 学校标注（蓝色圆点 + 脉冲动画）
+        var schoolPin = document.createElementNS(ns, 'g');
+        schoolPin.setAttribute('transform', 'translate(' + schoolPos.x + ',' + schoolPos.y + ')');
+        schoolPin.style.cursor = 'pointer';
+
+        var pulse = document.createElementNS(ns, 'circle');
+        pulse.setAttribute('cx', '0');
+        pulse.setAttribute('cy', '0');
+        pulse.setAttribute('r', '14');
+        pulse.setAttribute('fill', '#185FA5');
+        pulse.setAttribute('opacity', '0.2');
+        pulse.innerHTML = '<animate attributeName="r" values="14;24;14" dur="2.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.3;0;0.3" dur="2.5s" repeatCount="indefinite"/>';
+        schoolPin.appendChild(pulse);
+
+        var schoolDot = document.createElementNS(ns, 'circle');
+        schoolDot.setAttribute('cx', '0');
+        schoolDot.setAttribute('cy', '0');
+        schoolDot.setAttribute('r', '14');
+        schoolDot.setAttribute('fill', '#185FA5');
+        schoolDot.setAttribute('stroke', '#fff');
+        schoolDot.setAttribute('stroke-width', '2');
+        schoolPin.appendChild(schoolDot);
+
+        var schoolInner = document.createElementNS(ns, 'circle');
+        schoolInner.setAttribute('cx', '0');
+        schoolInner.setAttribute('cy', '0');
+        schoolInner.setAttribute('r', '5');
+        schoolInner.setAttribute('fill', '#fff');
+        schoolPin.appendChild(schoolInner);
+
+        schoolPin.addEventListener('click', function() {
+            closeMapPopup();
+            var rect = svg.getBoundingClientRect();
+            var sx = (schoolPos.x / 800) * rect.width;
+            var sy = (schoolPos.y / 600) * rect.height;
+            showMapPopupAtScreen(sx, sy,
+                '<div style="padding:4px 0;">' +
+                '<div style="font-size:15px;font-weight:600;margin-bottom:4px;">' + SCHOOL.name + '</div>' +
+                '<div style="font-size:12px;color:#666;">周边 ' + RESTAURANTS.length + ' 家清真餐厅</div>' +
+                '</div>');
+        });
+        svg.appendChild(schoolPin);
+
+        // 餐厅标注
+        RESTAURANTS.forEach(function(r) {
+            var pos = latLngToXY(r.lat, r.lng);
+
+            var g = document.createElementNS(ns, 'g');
+            g.setAttribute('transform', 'translate(' + pos.x + ',' + pos.y + ')');
+            g.style.cursor = 'pointer';
+            g.dataset.rid = r.id;
+
+            g.innerHTML =
+                '<ellipse cx="0" cy="2" rx="10" ry="3" fill="rgba(0,0,0,0.12)"/>' +
+                '<path d="M0,-30 C-8,-30 -12,-22 -12,-16 C-12,-8 0,0 0,0 C0,0 12,-8 12,-16 C12,-22 8,-30 0,-30 Z" fill="#0F6E56" stroke="#fff" stroke-width="1.5"/>' +
+                '<circle cx="0" cy="-18" r="4.5" fill="#fff"/>';
+
+            g.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var rect = svg.getBoundingClientRect();
+                var sx = (pos.x / 800) * rect.width;
+                var sy = (pos.y / 600) * rect.height;
+                showMapPopupAtScreen(sx, sy, buildPopupHTML(r));
+            });
+
+            svg.appendChild(g);
+
+            // 餐厅名称标签
+            var label = document.createElementNS(ns, 'text');
+            label.setAttribute('x', pos.x);
+            label.setAttribute('y', pos.y + 18);
+            label.setAttribute('text-anchor', 'middle');
+            label.setAttribute('font-size', '10');
+            label.setAttribute('fill', '#555');
+            label.setAttribute('font-weight', '500');
+            label.style.pointerEvents = 'none';
+            label.textContent = r.name.length > 8 ? r.name.substring(0, 7) + '..' : r.name;
+            svg.appendChild(label);
+        });
+
+        // 点击地图空白处关闭弹窗
+        svg.addEventListener('click', function() {
+            closeMapPopup();
+        });
+    }
+
+    /* ==================== 视图切换 ==================== */
+
+    function switchView(view) {
+        document.querySelectorAll('.view').forEach(function(v) { v.classList.add('hidden'); });
+        document.getElementById(view + '-view').classList.remove('hidden');
+        document.querySelectorAll('.nav-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.view === view);
+        });
+        currentView = view;
+        if (view === 'map') {
+            if (!mapInitialized) initMap();
+            closeMapPopup();
+        }
+    }
+
+    function showDetail(id, from) {
+        closeMapPopup();
+        previousView = from || 'map';
+        currentRestaurantId = id;
+        renderDetail(id);
+        switchView('detail');
+    }
+
+    function goBack() {
+        switchView(previousView);
+    }
+
+    function viewOnMap(id) {
+        var r = getRestaurantById(id);
+        switchView('map');
+        if (r) {
+            var pos = latLngToXY(r.lat, r.lng);
+            var svg = document.getElementById('map-svg');
+            var rect = svg.getBoundingClientRect();
+            var sx = (pos.x / 800) * rect.width;
+            var sy = (pos.y / 600) * rect.height;
+            setTimeout(function() {
+                showMapPopupAtScreen(sx, sy, buildPopupHTML(r));
+            }, 100);
+        }
+    }
+
+    /* ==================== 列表页 ==================== */
+
+    function renderList(sortBy) {
+        currentSort = sortBy || currentSort;
+        document.querySelectorAll('.sort-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.sort === currentSort);
+        });
+
+        var searchText = document.getElementById('search-input').value.toLowerCase();
+        var filtered = RESTAURANTS.filter(function(r) {
+            return r.name.toLowerCase().indexOf(searchText) >= 0 ||
+                   r.category.toLowerCase().indexOf(searchText) >= 0;
+        });
+
+        filtered.sort(function(a, b) {
+            if (currentSort === 'distance') return getDistance(a) - getDistance(b);
+            if (currentSort === 'rating') return b.rating - a.rating;
+            if (currentSort === 'price') return a.avgPrice - b.avgPrice;
+            return 0;
+        });
+
+        var container = document.getElementById('restaurant-list');
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="empty-state">没有找到匹配的餐厅</div>';
+            return;
+        }
+
+        container.innerHTML = filtered.map(function(r) {
+            var dist = formatDistance(getDistance(r));
+            return '<div class="restaurant-card" onclick="showDetail(' + r.id + ',\'list\')">' +
+                '<div class="card-row1">' +
+                    '<div class="card-name">' + r.name + '</div>' +
+                    '<div class="card-rating">\u2605 ' + r.rating + '</div>' +
+                '</div>' +
+                '<div class="card-row2">' +
+                    '<span class="badge">' + r.category + '</span>' +
+                    '<span class="price-tag">\u00a5' + r.avgPrice + '/人</span>' +
+                    '<span>\u00b7</span>' +
+                    '<span class="dist-tag">' + dist + '</span>' +
+                '</div>' +
+                '<div class="card-row3">' + r.address + '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    /* ==================== 详情页 ==================== */
+
+    function renderDetail(id) {
+        var r = getRestaurantById(id);
+        if (!r) return;
+
+        var reviews = getReviews(id);
+        var dist = formatDistance(getDistance(r));
+
+        var html = '';
+
+        html += '<button class="detail-back" onclick="goBack()">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>' +
+            '返回</button>';
+
+        html += '<div class="detail-title">' + r.name + '</div>';
+        html += '<div class="detail-meta">' +
+            '<span style="color:#F5A623;font-weight:600;">\u2605 ' + r.rating + '</span>' +
+            '<span>\u00b7</span>' +
+            '<span>\u00a5' + r.avgPrice + '/人</span>' +
+            '<span>\u00b7</span>' +
+            '<span>' + dist + '</span>' +
+            '<span>\u00b7</span>' +
+            '<span class="badge">' + r.category + '</span>' +
+        '</div>';
+
+        html += '<div class="detail-info">' +
+            '<div class="detail-info-row"><span class="detail-info-label">地址</span><span>' + r.address + '</span></div>' +
+            '<div class="detail-info-row"><span class="detail-info-label">电话</span><span>' + r.phone + '</span></div>' +
+        '</div>';
+
+        html += '<button class="view-on-map-btn" onclick="viewOnMap(' + r.id + ')">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg>' +
+            '在地图上查看</button>';
+
+        html += '<div class="section-title">招牌菜品</div>';
+        r.dishes.forEach(function(d) {
+            html += '<div class="dish-card">' +
+                '<div class="dish-left">' +
+                    '<div class="dish-name">' + d.name + '</div>' +
+                    '<div class="dish-desc">' + d.desc + '</div>' +
+                '</div>' +
+                '<div class="dish-price">\u00a5' + d.price + '</div>' +
+            '</div>';
+        });
+
+        html += '<a class="meituan-btn" href="' + r.meituanUrl + '" target="_blank" rel="noopener">' +
+            '去美团领优惠券 / 团购 \u2192</a>';
+
+        html += '<div class="section-title">用户评论 <span class="review-count">(' + reviews.length + '条)</span></div>';
+        if (reviews.length === 0) {
+            html += '<div class="empty-state">暂无评论，来发第一条吧</div>';
+        } else {
+            reviews.forEach(function(rv) {
+                var avatar = rv.user.substring(0, 1);
+                html += '<div class="review-card">' +
+                    '<div class="review-header">' +
+                        '<div class="review-user">' +
+                            '<div class="review-avatar">' + avatar + '</div>' +
+                            rv.user +
+                        '</div>' +
+                        '<div class="review-date">' + rv.date + '</div>' +
+                    '</div>' +
+                    '<div style="margin-bottom:4px;">' + renderStars(rv.rating) + '</div>' +
+                    '<div class="review-text">' + rv.text + '</div>' +
+                    (rv.photo ? '<img class="review-photo" src="' + rv.photo + '" alt="评论图片">' : '') +
+                '</div>';
+            });
+        }
+
+        html += '<div class="review-form">' +
+            '<div class="section-title" style="margin-bottom:14px;">发表评论</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">评分</label>' +
+                '<div class="rating-input" id="rating-input">' +
+                    '<span class="star-btn active" data-val="1">\u2605</span>' +
+                    '<span class="star-btn active" data-val="2">\u2605</span>' +
+                    '<span class="star-btn active" data-val="3">\u2605</span>' +
+                    '<span class="star-btn active" data-val="4">\u2605</span>' +
+                    '<span class="star-btn active" data-val="5">\u2605</span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">昵称</label>' +
+                '<input type="text" class="form-input" id="review-name" placeholder="匿名用户">' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">评论内容</label>' +
+                '<textarea class="form-textarea" id="review-text" placeholder="分享你的用餐体验..."></textarea>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">上传照片</label>' +
+                '<div class="photo-upload">' +
+                    '<label class="photo-upload-label">' +
+                        '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>' +
+                        '选择照片' +
+                        '<input type="file" accept="image/*" id="review-photo" style="display:none;">' +
+                    '</label>' +
+                    '<div id="photo-preview-container"></div>' +
+                '</div>' +
+            '</div>' +
+            '<button class="submit-btn" onclick="submitReview(' + r.id + ')">发表评论</button>' +
+        '</div>';
+
+        document.getElementById('restaurant-detail').innerHTML = html;
+        setupRatingInput();
+        setupPhotoUpload();
+    }
+
+    function setupRatingInput() {
+        var stars = document.querySelectorAll('#rating-input .star-btn');
+        stars.forEach(function(star) {
+            star.addEventListener('click', function() {
+                selectedRating = parseInt(this.dataset.val);
+                stars.forEach(function(s, i) {
+                    s.classList.toggle('active', i < selectedRating);
+                });
+            });
+        });
+    }
+
+    function setupPhotoUpload() {
+        uploadedPhoto = null;
+        var input = document.getElementById('review-photo');
+        if (!input) return;
+        input.addEventListener('change', function() {
+            var file = this.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('图片太大，请选择5MB以内的图片');
+                return;
+            }
+            resizeImage(file, 600, function(dataUrl) {
+                uploadedPhoto = dataUrl;
+                var container = document.getElementById('photo-preview-container');
+                container.innerHTML = '<img class="photo-preview" src="' + dataUrl + '" alt="预览">';
+            });
+        });
+    }
+
+    function submitReview(restaurantId) {
+        var nameInput = document.getElementById('review-name');
+        var textInput = document.getElementById('review-text');
+        var name = nameInput.value.trim() || '匿名用户';
+        var text = textInput.value.trim();
+        if (!text) {
+            showToast('请输入评论内容');
+            return;
+        }
+        var now = new Date();
+        var dateStr = now.getFullYear() + '-' +
+                      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                      String(now.getDate()).padStart(2, '0');
+        var review = {
+            user: name,
+            rating: selectedRating,
+            text: text,
+            date: dateStr,
+            photo: uploadedPhoto
+        };
+        saveReview(restaurantId, review);
+        selectedRating = 5;
+        uploadedPhoto = null;
+        renderDetail(restaurantId);
+        showToast('评论发表成功！');
+    }
+
+    /* ==================== 初始化 ==================== */
+
+    function init() {
+        initMap();
+        renderList('distance');
+        document.querySelectorAll('.sort-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                renderList(this.dataset.sort);
+            });
+        });
+        document.getElementById('search-input').addEventListener('input', function() {
+            renderList(currentSort);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
