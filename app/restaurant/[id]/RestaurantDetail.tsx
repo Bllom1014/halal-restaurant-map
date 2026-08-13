@@ -48,15 +48,37 @@ export default function RestaurantDetail({ restaurant: r, dishes, reviews }: Pro
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+  const [meituanTip, setMeituanTip] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // 美团链接：自动生成的搜索链接 → 用 deeplink scheme 唤起 APP 搜索
-  // 用户填的真实团购链接 → 直接用那个 URL
-  const meituanHref = (() => {
-    if (!r.meituan_url) return '';
-    if (!r.meituan_url.includes('meituan.com/search')) return r.meituan_url;
-    return `imeituan://www.meituan.com/search?q=${encodeURIComponent(r.name)}`;
-  })();
+  // 美团跳转：复制餐厅名 → 打开美团 APP → 提示粘贴搜索
+  const handleMeituan = async () => {
+    if (!r.meituan_url) return;
+    // 如果是用户填的真实团购链接，直接跳转
+    if (!r.meituan_url.includes('meituan.com/search')) {
+      window.open(r.meituan_url, '_blank');
+      return;
+    }
+    // 搜索链接 → 复制餐厅名 + 打开美团
+    try {
+      await navigator.clipboard.writeText(r.name);
+    } catch {
+      // 剪贴板可能被拦截，用旧方案
+      const ta = document.createElement('textarea');
+      ta.value = r.name;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setMeituanTip(`已复制"${r.name}"，打开美团后在搜索框粘贴`);
+    // 延迟跳转让用户看到提示
+    setTimeout(() => {
+      window.location.href = 'https://www.meituan.com';
+    }, 800);
+  };
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -181,10 +203,15 @@ export default function RestaurantDetail({ restaurant: r, dishes, reviews }: Pro
             </>
           )}
 
-          {meituanHref && (
-            <a className="meituan-btn" href={meituanHref}>
+          {r.meituan_url && (
+            <button className="meituan-btn" onClick={handleMeituan}>
               去美团领优惠券 / 团购 →
-            </a>
+            </button>
+          )}
+          {meituanTip && (
+            <div style={{ fontSize: 13, color: '#0F6E56', background: '#E1F5EE', padding: '8px 12px', borderRadius: 8, marginTop: -8, marginBottom: 8, textAlign: 'center' }}>
+              {meituanTip}
+            </div>
           )}
 
           <div className="section-title">
