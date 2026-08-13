@@ -50,27 +50,13 @@ export default function RestaurantDetail({ restaurant: r, dishes, reviews }: Pro
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // 美团跳转：先尝试 deeplink 唤起 APP 搜索，没装则 fallback 到 H5
-  const openMeituan = () => {
-    if (!r.meituan_url) return;
-    // 如果是用户填的真实团购链接，直接跳转
-    if (!r.meituan_url.includes('meituan.com/search')) {
-      window.open(r.meituan_url, '_blank');
-      return;
-    }
-    // 搜索链接 → 用 deeplink 唤起 APP
-    const keyword = encodeURIComponent(r.name);
-    const appScheme = `imeituan://www.meituan.com/search?q=${keyword}`;
-    const h5Url = `https://h5.meituan.com/search/?keyword=${keyword}`;
-    const start = Date.now();
-    window.location.href = appScheme;
-    // 如果 2 秒后还在当前页面（没装 APP），跳 H5
-    setTimeout(() => {
-      if (Date.now() - start < 2500) {
-        window.location.href = h5Url;
-      }
-    }, 2000);
-  };
+  // 美团链接：自动生成的搜索链接 → 用 deeplink scheme 唤起 APP 搜索
+  // 用户填的真实团购链接 → 直接用那个 URL
+  const meituanHref = (() => {
+    if (!r.meituan_url) return '';
+    if (!r.meituan_url.includes('meituan.com/search')) return r.meituan_url;
+    return `imeituan://www.meituan.com/search?q=${encodeURIComponent(r.name)}`;
+  })();
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -195,10 +181,10 @@ export default function RestaurantDetail({ restaurant: r, dishes, reviews }: Pro
             </>
           )}
 
-          {r.meituan_url && (
-            <button className="meituan-btn" onClick={openMeituan}>
+          {meituanHref && (
+            <a className="meituan-btn" href={meituanHref}>
               去美团领优惠券 / 团购 →
-            </button>
+            </a>
           )}
 
           <div className="section-title">
