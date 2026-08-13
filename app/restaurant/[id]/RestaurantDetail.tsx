@@ -76,7 +76,7 @@ export default function RestaurantDetail({ restaurant: r, dishes, reviews }: Pro
     setMeituanTip(`已复制"${r.name}"，打开美团后在搜索框粘贴`);
     // 延迟跳转让用户看到提示
     setTimeout(() => {
-      window.location.href = 'https://www.meituan.com';
+      window.location.href = 'imeituan://';
     }, 800);
   };
 
