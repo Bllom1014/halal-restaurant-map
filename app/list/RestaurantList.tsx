@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Restaurant } from '@/types/database';
+import { amapNavUrl } from '@/lib/navigation';
 
 const SCHOOL = { lat: 43.8261, lng: 125.2948 };
 
@@ -104,7 +105,19 @@ export default function RestaurantList({ restaurants }: { restaurants: Restauran
                     <span>·</span>
                     <span className="dist-tag">{dist}</span>
                   </div>
-                  <div className="card-row3">{r.address || '地址待补'}</div>
+                  <div className="card-row3">
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.address || '地址待补'}</span>
+                    <a
+                      className="card-nav-link"
+                      href={amapNavUrl(r.lat, r.lng, r.name)}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
+                      </svg>
+                      导航
+                    </a>
+                  </div>
                 </div>
               );
             })

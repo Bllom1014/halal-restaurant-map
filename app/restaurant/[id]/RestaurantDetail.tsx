@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { Restaurant, Dish, Review } from '@/types/database';
+import { amapNavUrl } from '@/lib/navigation';
 
 const SCHOOL = { lat: 43.8261, lng: 125.2948 };
 
@@ -181,12 +182,20 @@ export default function RestaurantDetail({ restaurant: r, dishes, reviews }: Pro
             </div>
           </div>
 
-          <button className="view-on-map-btn" onClick={() => router.push('/')}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
-            </svg>
-            在地图上查看
-          </button>
+          <div className="detail-btn-row">
+            <button className="view-on-map-btn" onClick={() => router.push('/')}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+              </svg>
+              在地图上查看
+            </button>
+            <a className="amap-nav-btn" href={amapNavUrl(r.lat, r.lng, r.name)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
+              </svg>
+              高德导航
+            </a>
+          </div>
 
           {dishes.length > 0 && (
             <>

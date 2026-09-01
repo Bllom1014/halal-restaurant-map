@@ -101,7 +101,10 @@ export default function MapView({ restaurants }: Props) {
             <span style="color:#185FA5;">${distStr}</span>
           </div>
           <div style="font-size:11px;color:#999;margin-bottom:8px;">${escapeHtml(r.address || '地址待补')}</div>
-          <button id="amap-detail-btn-${r.id}" style="display:block;width:100%;padding:6px 0;background:#0F6E56;color:#fff;font-size:12px;border:none;border-radius:6px;cursor:pointer;">查看详情</button>
+          <div style="display:flex;gap:6px;">
+            <button id="amap-detail-btn-${r.id}" style="flex:1;padding:6px 0;background:#0F6E56;color:#fff;font-size:12px;border:none;border-radius:6px;cursor:pointer;">查看详情</button>
+            <a href="https://uri.amap.com/navigation?to=${r.lng},${r.lat},${encodeURIComponent(r.name)}&mode=car&coordinate=gaode&src=halal-restaurant-map" style="flex:1;display:block;text-align:center;padding:6px 0;background:#185FA5;color:#fff;font-size:12px;border:none;border-radius:6px;cursor:pointer;text-decoration:none;">到这去</a>
+          </div>
         </div>`;
 
         marker.on('click', () => {
