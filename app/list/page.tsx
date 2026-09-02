@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase';
 import RestaurantList from './RestaurantList';
 import { Restaurant } from '@/types/database';
 
+export const dynamic = 'force-dynamic';
+
 async function fetchRestaurants(): Promise<Restaurant[]> {
   const supabase = createClient();
   const { data, error } = await supabase

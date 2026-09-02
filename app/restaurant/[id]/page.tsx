@@ -3,6 +3,8 @@ import RestaurantDetail from './RestaurantDetail';
 import { Restaurant, Dish, Review } from '@/types/database';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 type Props = { params: { id: string } };
 
 async function fetchRestaurant(id: string): Promise<{

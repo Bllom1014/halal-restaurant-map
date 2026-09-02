@@ -3,6 +3,8 @@ import MapView from './components/MapView';
 import BottomNav from './components/BottomNav';
 import { Restaurant } from '@/types/database';
 
+export const dynamic = 'force-dynamic';
+
 async function fetchRestaurants(): Promise<Restaurant[]> {
   const supabase = createClient();
   const { data, error } = await supabase
