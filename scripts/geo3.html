@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Geo</title>
+<script>
+window._AMapSecurityConfig = { securityJsCode: '86d0dec8c1eddadeeacac7a4c6ce4f1c' };
+</script>
+<script src="https://webapi.amap.com/maps?v=2.0&key=b01d281572111fad87f798a66306ef39&plugin=AMap.PlaceSearch,AMap.Geocoder"></script>
+</head>
+<body>
+<pre id="out" style="font-size:18px">loading...</pre>
+<script>
+var targets = [
+  { name: "北门小哥", city: "长春", query: "北门小哥烧烤 致远街" },
+  { name: "火焰山新疆美食", city: "长春", query: "火焰山新疆美食 致远街" }
+];
+var results = [];
+var idx = 0;
+function next() {
+  if (idx >= targets.length) {
+    var text = JSON.stringify(results, null, 2);
+    document.getElementById('out').textContent = text;
+    fetch('/save', { method: 'POST', body: text }).then(function(){
+      document.getElementById('out').textContent = text + '\n\nSAVED';
+    });
+    return;
+  }
+  var t = targets[idx];
+  document.getElementById('out').textContent = 'searching ' + (idx+1) + '/' + targets.length + ': ' + t.name;
+  var ps = new AMap.PlaceSearch({ city: t.city, pageSize: 5 });
+  ps.search(t.query, function(status, data) {
+    var best = null;
+    if (data && data.poiList && data.poiList.pois && data.poiList.pois.length > 0) {
+      best = data.poiList.pois[0];
+      results.push({
+        name: t.name,
+        poiName: best.name,
+        poiAddr: best.address,
+        lat: best.location.lat,
+        lng: best.location.lng,
+        tel: best.tel || '',
+        src: 'poi'
+      });
+    } else {
+      // fallback to geocoder
+      var gc = new AMap.Geocoder({ city: t.city });
+      gc.getLocation("长春市朝阳区致远街", function(s2, d2) {
+        if (d2 && d2.geocodes && d2.geocodes[0]) {
+          var loc = d2.geocodes[0].location;
+          results.push({ name: t.name, poiName: '', poiAddr: '致远街', lat: loc.lat, lng: loc.lng, src: 'geo' });
+        } else {
+          results.push({ name: t.name, poiName: '', poiAddr: '', lat: null, lng: null, src: 'none' });
+        }
+        idx++;
+        setTimeout(next, 500);
+      });
+      return;
+    }
+    idx++;
+    setTimeout(next, 500);
+  });
+}
+// wait for AMap to load
+window.onload = function() {
+  setTimeout(next, 1500);
+};
+</script>
+</body>
+</html>

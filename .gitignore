@@ -8,3 +8,8 @@ out/
 .vercel
 next-env.d.ts
 screenshots/
+# Tencent Cloud EdgeOne
+.env
+.edgeone/*
+.tef_dist/*
+  

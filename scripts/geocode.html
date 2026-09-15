@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>geocode</title>
+<style>body{font:13px/1.5 monospace;margin:12px;}#log{white-space:pre-wrap;max-height:200px;overflow:auto;border:1px solid #ccc;padding:6px;margin-bottom:8px;}#done{color:#0a0;font-weight:bold;display:none;}</style>
+</head>
+<body>
+<div id="prog">starting…</div>
+<div id="done">ALL DONE</div>
+<div id="log"></div>
+<script>
+window._AMapSecurityConfig = { securityJsCode: '86d0dec8c1eddadeeacac7a4c6ce4f1c' };
+</script>
+<script src="https://webapi.amap.com/maps?v=2.0&key=b01d281572111fad87f798a66306ef39&plugin=AMap.PlaceSearch,AMap.Geocoder"></script>
+<script>
+const out = [];
+function log(s){ const d=document.getElementById('log'); d.textContent += s+'\n'; d.scrollTop=d.scrollHeight; }
+function pick(pois, name, address){
+  if(!pois||!pois.length) return null;
+  const nm = name.replace(/（.*$/,'').replace(/\(.*$/,'').trim();
+  // strip common prefix words to get core tokens
+  const addrTok = (address||'').replace(/[区市]/g,'').slice(0,12);
+  let scored = pois.map(p=>{
+    let sc=0;
+    if(p.name && p.name.indexOf(nm)>=0) sc+=5;
+    if(p.address && addrTok && p.address.indexOf(addrTok)>=0) sc+=4;
+    if(p.address && (address||'').indexOf(p.address.slice(0,5))>=0) sc+=2;
+    return {p,score:sc};
+  }).sort((a,b)=>b.score-a.score);
+  return scored[0].p;
+}
+async function geoOne(r){
+  return new Promise(resolve=>{
+    const city = r.city || '长春';
+    const ps = new AMap.PlaceSearch({ city: city, citylimit: true, pageSize: 8, page:1, extensions:'all' });
+    ps.search(r.name, (status, result)=>{
+      if(status==='complete' && result.poiList && result.poiList.pois && result.poiList.pois.length){
+        const best = pick(result.poiList.pois, r.name, r.address);
+        if(best && best.location){ return resolve({idx:r.idx, name:r.name, lat:best.location.lat, lng:best.location.lng, src:'poi', poiName:best.name, poiAddr:best.address}); }
+      }
+      // fallback geocoder by address
+      const gc = new AMap.Geocoder({ city: city });
+      gc.getLocation(r.address, (st, res)=>{
+        if(st==='complete' && res.geocodes && res.geocodes[0]){
+          const loc = res.geocodes[0].location;
+          return resolve({idx:r.idx, name:r.name, lat:loc.lat, lng:loc.lng, src:'geo', poiName:'', poiAddr:r.address});
+        }
+        return resolve({idx:r.idx, name:r.name, lat:null, lng:null, src:'none', poiName:'', poiAddr:r.address});
+      });
+    });
+  });
+}
+async function run(){
+  let data;
+  try{ data = await (await fetch('/data.json')).json(); }catch(e){ log('fetch data failed: '+e); return; }
+  log('total: '+data.length);
+  const res = [];
+  for(let i=0;i<data.length;i++){
+    const r = data[i];
+    const o = await geoOne(r);
+    res.push({...r, ...o, lat:o.lat, lng:o.lng});
+    if((i+1)%10===0 || i===data.length-1) log((i+1)+'/'+data.length+'  '+r.name+' -> '+(o.lat? (o.lat.toFixed(4)+','+o.lng.toFixed(4)):'NONE')+' ['+o.src+']');
+    document.getElementById('prog').textContent = (i+1)+' / '+data.length;
+    await new Promise(f=>setTimeout(f,180));
+  }
+  const none = res.filter(x=>!x.lat);
+  log('--- done. total='+res.length+'  none='+none.length);
+  if(none.length){ log('NONE: '+none.map(x=>'#'+x.idx+' '+x.name).join(' | ')); }
+  await fetch('/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(res)});
+  document.getElementById('done').style.display='block';
+  window.__GEO_DONE = true;
+}
+window.addEventListener('load', ()=>{ setTimeout(run, 800); });
+</script>
+</body>
+</html>
